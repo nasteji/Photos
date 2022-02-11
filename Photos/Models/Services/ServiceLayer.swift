@@ -17,13 +17,13 @@ class ServiceLayer {
     let favoritePhotoSingleton = FavoritePhotoSingleton.shared
     
     // MARK: - Load Random Photos
-    func loadRandomPhotos(byText: String?, completion: @escaping([Photo]) -> Void) {
+    func loadRandomPhotos(byText: String = "", completion: @escaping([Photo]) -> Void) {
         let path = "photos/random"
         let url = baseUrl+path
         let parameters: [String : Any] = [
             "client_id": accessKey,
             "count": 30,
-            "query": byText ?? ""
+            "query": byText
         ]
         
         AF.request(url, method: .get, parameters: parameters).responseData {

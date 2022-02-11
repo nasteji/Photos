@@ -14,19 +14,22 @@ class SearchByPhotoVC: UIViewController {
     private let serviceLayer = ServiceLayer()
     var photoArray: [Photo] = []
     
+    var isLoading = false
+    
     // MARK: - Life Cycles
     override func viewDidLoad() {
         super.viewDidLoad()
 
         setupSearchBar()
         setupCollectionView()
+        setupRefreshControl()
         
         loadRandomPhotos()
     }
     
     // MARK: - Load Random Photos
     func loadRandomPhotos() {
-        serviceLayer.loadRandomPhotos(byText: nil) { [weak self] photoArray in
+        serviceLayer.loadRandomPhotos() { [weak self] photoArray in
             guard let self = self else { return }
             self.photoArray = photoArray
             DispatchQueue.main.async {
@@ -61,7 +64,8 @@ extension SearchByPhotoVC: UICollectionViewDelegate, UICollectionViewDataSource 
         collectionView.register(SearchCollectionCell.self, forCellWithReuseIdentifier: SearchCollectionCell.reuseId)
         collectionView.delegate = self
         collectionView.dataSource = self
-            
+        collectionView.prefetchDataSource = self
+        
         view.addSubview(collectionView)
     }
     
@@ -115,6 +119,52 @@ extension SearchByPhotoVC: UISearchBarDelegate {
    
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         searchBar.endEditing(true)
+    }
+    
+}
+
+// MARK: - Prefetching
+extension SearchByPhotoVC: UICollectionViewDataSourcePrefetching {
+    func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
+        guard let maxItem = indexPaths.map({ $0.item }).max(),
+                maxItem > photoArray.count - 4,
+                !isLoading else { return }
+        isLoading = true
+
+        serviceLayer.loadRandomPhotos() { [weak self] photoArray in
+            guard let self = self else { return }
+            var indexPathForAdd: [IndexPath] = []
+            let indexArray = self.photoArray.count..<self.photoArray.count + photoArray.count
+            indexArray.forEach { indexPathForAdd.append(IndexPath(item: $0, section: 0)) }
+            self.photoArray.append(contentsOf: photoArray)
+
+            DispatchQueue.main.async {
+                self.collectionView?.insertItems(at: indexPathForAdd)
+            }
+            self.isLoading = false
+        }
+    }
+}
+    
+// MARK: - Refresh Control
+extension SearchByPhotoVC {
+    private func setupRefreshControl() {
+        collectionView?.refreshControl = UIRefreshControl()
+        collectionView?.refreshControl?.attributedTitle = NSAttributedString(string: "loading...")
+        collectionView?.refreshControl?.tintColor = .black
+        collectionView?.refreshControl?.addTarget(self, action: #selector(refreshPhotos), for: .valueChanged)
+    }
+    
+    @objc func refreshPhotos() {
+        serviceLayer.loadRandomPhotos() { [weak self] photoArray in
+            guard let self = self else { return }
+            self.photoArray.insert(contentsOf: photoArray, at: 0)
+
+            DispatchQueue.main.async {
+                self.collectionView?.reloadData()
+                self.collectionView?.refreshControl?.endRefreshing()
+            }
+        }
     }
     
 }
