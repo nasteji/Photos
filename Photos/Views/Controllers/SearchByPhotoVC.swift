@@ -10,6 +10,7 @@ import UIKit
 class SearchByPhotoVC: UIViewController {
     
     private var collectionView: UICollectionView?
+    private var searchBar: UISearchBar?
     
     private let serviceLayer = ServiceLayer()
     var photoArray: [Photo] = []
@@ -60,7 +61,7 @@ extension SearchByPhotoVC: UICollectionViewDelegate, UICollectionViewDataSource 
         collectionView = UICollectionView(frame: collectionViewFrame,
                                           collectionViewLayout: collectionViewlayout)
         
-        guard let collectionView = self.collectionView else { return }
+        guard let collectionView = collectionView else { return }
         collectionView.register(SearchCollectionCell.self, forCellWithReuseIdentifier: SearchCollectionCell.reuseId)
         collectionView.delegate = self
         collectionView.dataSource = self
@@ -104,10 +105,11 @@ extension SearchByPhotoVC: UISearchBarDelegate {
     }
     
     func setupSearchBar() {
-        let searchBar = UISearchBar(frame: CGRect(x: 0.0,
+        searchBar = UISearchBar(frame: CGRect(x: 0.0,
                                               y: ScreenSizes.statusBarHeight,
                                               width: ScreenSizes.fullScreenWidth,
                                               height: ScreenSizes.searchBarHeight))
+        guard let searchBar = searchBar else { return }
         searchBar.searchBarStyle = .default
         searchBar.placeholder = "search"
         searchBar.sizeToFit()
@@ -131,13 +133,19 @@ extension SearchByPhotoVC: UICollectionViewDataSourcePrefetching {
                 !isLoading else { return }
         isLoading = true
 
-        serviceLayer.loadRandomPhotos() { [weak self] photoArray in
+        serviceLayer.loadRandomPhotos(byText: searchBar?.text ?? "") { [weak self] photoArray in
             guard let self = self else { return }
             var indexPathForAdd: [IndexPath] = []
-            let indexArray = self.photoArray.count..<self.photoArray.count + photoArray.count
+            
+            var photoArrayForAdd = photoArray
+            photoArrayForAdd.removeAll(where: { photo in
+                self.photoArray.contains(where: { $0.id == photo.id })
+            })
+            
+            let indexArray = self.photoArray.count..<self.photoArray.count + photoArrayForAdd.count
             indexArray.forEach { indexPathForAdd.append(IndexPath(item: $0, section: 0)) }
-            self.photoArray.append(contentsOf: photoArray)
-
+            self.photoArray.append(contentsOf: photoArrayForAdd)
+            
             DispatchQueue.main.async {
                 self.collectionView?.insertItems(at: indexPathForAdd)
             }
@@ -151,15 +159,18 @@ extension SearchByPhotoVC {
     private func setupRefreshControl() {
         collectionView?.refreshControl = UIRefreshControl()
         collectionView?.refreshControl?.attributedTitle = NSAttributedString(string: "loading...")
-        collectionView?.refreshControl?.tintColor = .black
         collectionView?.refreshControl?.addTarget(self, action: #selector(refreshPhotos), for: .valueChanged)
     }
     
     @objc func refreshPhotos() {
-        serviceLayer.loadRandomPhotos() { [weak self] photoArray in
+        serviceLayer.loadRandomPhotos(byText: searchBar?.text ?? "") { [weak self] photoArray in
             guard let self = self else { return }
-            self.photoArray.insert(contentsOf: photoArray, at: 0)
-
+            var photoArrayForAdd = photoArray
+            photoArrayForAdd.removeAll(where: { photo in
+                self.photoArray.contains(where: { $0.id == photo.id })
+            })
+            self.photoArray.insert(contentsOf: photoArrayForAdd, at: 0)
+            
             DispatchQueue.main.async {
                 self.collectionView?.reloadData()
                 self.collectionView?.refreshControl?.endRefreshing()

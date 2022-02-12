@@ -30,7 +30,7 @@ class ServiceLayer {
             [weak self] response in
                 guard let data = response.value else { return }
                 do {
-                    var photoArray = try JSONDecoder().decode(PhotoArray.self, from: data)
+                    let photoArray = try JSONDecoder().decode(PhotoArray.self, from: data)
                     DispatchQueue.global(qos: .utility).async {
                         completion(photoArray)
                     }
