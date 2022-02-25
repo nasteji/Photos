@@ -20,6 +20,16 @@ class PhotoDetailsVC: UIViewController {
         setupStackView()
     }
     
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+       
+        if let favoritePhotosTableVC = presentingViewController?.childViewControllerForPointerLock as? FavoritePhotosTableVC {
+            DispatchQueue.main.async {
+                favoritePhotosTableVC.tableView.reloadData()
+            }
+        }
+    }
+    
     // MARK: - Setup Stack View
     func setupStackView() {
         view.backgroundColor = .white

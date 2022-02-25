@@ -57,15 +57,8 @@ class FavoritePhotosTableVC: UITableViewController {
     // MARK: - Segues
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let photoDetailsVC = PhotoDetailsVC()
-        photoDetailsVC.presentationController?.delegate = self
         photoDetailsVC.photo = favoritePhotoSingleton.favoritePhotoArray[indexPath.row]
         
         present(photoDetailsVC, animated: true, completion: nil)
-    }
-}
-
-extension FavoritePhotosTableVC: UIAdaptivePresentationControllerDelegate {
-    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
-        tableView.reloadData()
     }
 }
